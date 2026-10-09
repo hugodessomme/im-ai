@@ -102,21 +102,29 @@ describe("createLibrary", () => {
     expect(await readFile(join(library, "skills/commit-messages/SKILL.md"), "utf8")).toContain("name: commit-messages");
   });
 
-  it("with overwrite, resets im-ai.json of an existing library, keeps its skills and history, and commits", async () => {
+  it("with overwrite, initializes a folder that is not empty and keeps its files", async () => {
     const sandbox = await createSandbox();
-    await createLibrary(sandbox.library, { env: sandbox.env });
-    await writeFile(join(sandbox.library, "im-ai.json"), '{ "resources": {} }\n');
-    await mkdir(join(sandbox.library, "skills/my-skill"));
-    await writeFile(join(sandbox.library, "skills/my-skill/SKILL.md"), "---\nname: my-skill\ndescription: Mine.\n---\n");
-    await gitOutput(sandbox, sandbox.library, ["add", "."]);
-    await gitOutput(sandbox, sandbox.library, ["commit", "-m", "Add my-skill"]);
+    await copyFixtureLibrary(sandbox);
 
     await createLibrary(sandbox.library, { env: sandbox.env, overwrite: true });
 
-    expect((await listResources(sandbox.library)).map((resource) => resource.name)).toEqual(["my-skill"]);
-    expect(await readFile(join(sandbox.library, "im-ai.json"), "utf8")).toBe("{}\n");
+    expect(await listResources(sandbox.library)).toHaveLength(3);
+    expect(await gitOutput(sandbox, sandbox.library, ["log", "--format=%s"])).toBe("Initialize the im-ai library");
+    expect(await gitOutput(sandbox, sandbox.library, ["ls-files"])).toBe("im-ai.json\nskills/.gitkeep");
+  });
+
+  it("with overwrite, keeps the im-ai.json and the history of an existing library", async () => {
+    const sandbox = await createSandbox();
+    await createLibrary(sandbox.library, { env: sandbox.env });
+    const manifest = '{ "resources": { "my-skill": {} } }\n';
+    await writeFile(join(sandbox.library, "im-ai.json"), manifest);
+    await gitOutput(sandbox, sandbox.library, ["commit", "-am", "Record my-skill"]);
+
+    await createLibrary(sandbox.library, { env: sandbox.env, overwrite: true });
+
+    expect(await readFile(join(sandbox.library, "im-ai.json"), "utf8")).toBe(manifest);
     expect(await gitOutput(sandbox, sandbox.library, ["log", "--format=%s"])).toBe(
-      "Initialize the im-ai library\nAdd my-skill\nInitialize the im-ai library",
+      "Record my-skill\nInitialize the im-ai library",
     );
     expect(await gitOutput(sandbox, sandbox.library, ["status", "--porcelain"])).toBe("");
   });

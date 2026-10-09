@@ -1,15 +1,15 @@
-import { type AgentId, agentIds } from "./agents.ts";
+import { type AgentId, agentIds, isAgentId } from "./agents.ts";
 import type { Env } from "./env.ts";
-import { ExistsError, ImAiError } from "./errors.ts";
+import { ImAiError } from "./errors.ts";
 import { createLibrary } from "./library.ts";
-import { hasMachineConfig, machineConfigPath, writeMachineConfig } from "./machine-store.ts";
+import { assertNoMachineConfig, writeMachineConfig } from "./machine-store.ts";
 
 export type InitOptions = {
   /** Absolute path of the new library. */
   library: string;
   /** The active agents, for example `["claude", "codex"]`. */
   agents: readonly string[];
-  /** Replace an existing machine config, and initialize the library folder even if it is not empty. */
+  /** Replace an existing machine config, and initialize the library folder even if it is not empty (its files are kept). */
   overwrite?: boolean;
 };
 
@@ -21,8 +21,8 @@ export async function init(options: InitOptions, env: Env): Promise<{ library: s
   const { library, overwrite = false } = options;
   const agents = parseAgents(options.agents);
 
-  if (!overwrite && (await hasMachineConfig(env))) {
-    throw new ExistsError(`A machine config already exists at ${machineConfigPath(env)}.`);
+  if (!overwrite) {
+    await assertNoMachineConfig(env);
   }
   await createLibrary(library, { env, overwrite });
   const machineConfig = await writeMachineConfig(env, { library, agents }, { overwrite });
@@ -35,9 +35,9 @@ function parseAgents(names: readonly string[]): AgentId[] {
     throw new ImAiError(`Choose at least one agent. ${known}`);
   }
   for (const name of names) {
-    if (!(agentIds as readonly string[]).includes(name)) {
+    if (!isAgentId(name)) {
       throw new ImAiError(`Unknown agent "${name}". ${known}`);
     }
   }
-  return [...new Set(names)] as AgentId[];
+  return [...new Set(names as AgentId[])];
 }

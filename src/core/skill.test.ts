@@ -84,4 +84,18 @@ describe("checkSkill", () => {
 
     expect(result).toEqual({ description: undefined, problems: ["frontmatter is not a YAML mapping"] });
   });
+
+  it("rejects a description that is not text", () => {
+    const result = checkSkill("commit-messages", skillMd("name: commit-messages\ndescription: 123"));
+
+    expect(result).toEqual({ description: undefined, problems: ["description must be text"] });
+  });
+
+  it("counts the description length in characters, not in UTF-16 units", () => {
+    const description = "🙂".repeat(1024);
+
+    const result = checkSkill("commit-messages", skillMd(`name: commit-messages\ndescription: ${description}`));
+
+    expect(result).toEqual({ description, problems: [] });
+  });
 });

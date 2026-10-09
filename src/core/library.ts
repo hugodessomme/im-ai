@@ -1,7 +1,8 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Env } from "./env.ts";
 import { ExistsError, ImAiError } from "./errors.ts";
+import { isNotFound, readFileIfExists } from "./fs.ts";
 import { git } from "./git.ts";
 import { checkSkill } from "./skill.ts";
 
@@ -16,8 +17,8 @@ export type Resource = {
 
 /**
  * Creates an empty library at `libraryPath`: a git repository with `skills/` and an empty `im-ai.json`, in one commit.
- * It refuses a folder that is not empty, unless `overwrite` is set. Then it resets `im-ai.json` and keeps
- * every other file and the git history.
+ * It refuses a folder that is not empty, unless `overwrite` is set. Then it adds only what is missing,
+ * and keeps the existing files (`im-ai.json` included) and the git history.
  */
 export async function createLibrary(libraryPath: string, options: { env: Env; overwrite?: boolean }): Promise<void> {
   const { env, overwrite = false } = options;
@@ -29,7 +30,9 @@ export async function createLibrary(libraryPath: string, options: { env: Env; ov
   await mkdir(join(libraryPath, "skills"), { recursive: true });
   // git does not track empty folders.
   await writeFile(join(libraryPath, "skills/.gitkeep"), "");
-  await writeFile(join(libraryPath, "im-ai.json"), "{}\n");
+  await writeFile(join(libraryPath, "im-ai.json"), "{}\n", { flag: "wx" }).catch((error: unknown) => {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  });
 
   const files = ["im-ai.json", "skills/.gitkeep"];
   await git(libraryPath, ["init", "--quiet", "--initial-branch=main"], env);
@@ -63,19 +66,6 @@ export async function listResources(libraryPath: string): Promise<Resource[]> {
       return { kind: "skill", name, ...checkSkill(name, skillMd) };
     }),
   );
-}
-
-async function readFileIfExists(path: string): Promise<string | undefined> {
-  try {
-    return await readFile(path, "utf8");
-  } catch (error) {
-    if (isNotFound(error)) return undefined;
-    throw error;
-  }
-}
-
-function isNotFound(error: unknown): boolean {
-  return (error as NodeJS.ErrnoException).code === "ENOENT";
 }
 
 async function readFolderIfExists(folder: string): Promise<string[] | undefined> {

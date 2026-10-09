@@ -17,7 +17,7 @@ const usage = `Usage:
   im-ai init --library <path> --agents <list> [--force]
       Create your library (a git repository) and the machine config.
       --agents is a comma-separated list of active agents: claude, codex.
-      --force overwrites an existing machine config, and initializes a library folder that is not empty.
+      --force overwrites an existing machine config, and initializes a library folder that is not empty (its files are kept).
   im-ai list
       Show every skill in the library, with its description.
 `;

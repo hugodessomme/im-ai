@@ -29,12 +29,16 @@ export function checkSkill(folderName: string, skillMd: string): SkillCheck {
     problems.push(`name "${name}" does not match the folder name "${folderName}"`);
   }
 
-  const description =
-    typeof frontmatter.description === "string" && frontmatter.description !== "" ? frontmatter.description : undefined;
-  if (description === undefined) {
+  const rawDescription = frontmatter.description;
+  const description = typeof rawDescription === "string" && rawDescription !== "" ? rawDescription : undefined;
+  // Count characters (code points), not UTF-16 units.
+  const descriptionLength = [...(description ?? "")].length;
+  if (rawDescription === undefined || rawDescription === null || rawDescription === "") {
     problems.push("description is missing");
-  } else if (description.length > maxDescriptionLength) {
-    problems.push(`description is longer than ${maxDescriptionLength} characters (${description.length})`);
+  } else if (description === undefined) {
+    problems.push("description must be text");
+  } else if (descriptionLength > maxDescriptionLength) {
+    problems.push(`description is longer than ${maxDescriptionLength} characters (${descriptionLength})`);
   }
 
   return { description, problems };

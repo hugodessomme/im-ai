@@ -66,12 +66,12 @@ export async function gitOutput(sandbox: Sandbox, cwd: string, args: string[]): 
 export type CliResult = { code: number; stdout: string; stderr: string };
 
 /** Runs the CLI in-process, in the sandbox, and captures its output. */
-export async function runCli(sandbox: Sandbox, args: string[], options: { cwd?: string } = {}): Promise<CliResult> {
+export async function runCli(sandbox: Sandbox, args: string[]): Promise<CliResult> {
   let stdout = "";
   let stderr = "";
   const code = await run(args, {
     env: sandbox.env,
-    cwd: options.cwd ?? sandbox.project,
+    cwd: sandbox.project,
     stdout: { write: (text) => (stdout += text) },
     stderr: { write: (text) => (stderr += text) },
   });
